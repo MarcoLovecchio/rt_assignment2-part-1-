@@ -6,6 +6,7 @@ import math
 import actionlib
 import actionlib.msg
 import assignment2_part1.msg
+from actionlib_msgs.msg import GoalStatus
 from assignment2_part1.msg import robotposvel
 
 des_pose = PoseStamped()
@@ -19,7 +20,7 @@ def planning_client(des_pose):
 	client = actionlib.SimpleActionClient('/reaching_goal', assignment2_part1.msg.PlanningAction)
 	client.wait_for_server()
 	goal = assignment2_part1.msg.PlanningGoal(target_pose = des_pose)
-	client.send_goal(goal)
+	client.send_goal(goal, done_cb=done_callback, feedback_cb=feedback_callback)
 	
 	while not client.get_result():
 		userin = input('x to cancel the goal: ')
@@ -39,7 +40,23 @@ def planning_client(des_pose):
 		
 	return client.get_result()
 
-def clbk_odom(msg):
+def feedback_callback(feedback):
+	actual_position = feedback.actual_pose.position
+	target_position = des_pose.pose.position
+	
+	distance = math.sqrt(
+		(actual_position.x - target_position.x)**2 +
+		(actual_position.y - target_position.y)**2 +
+		(actual_position.z - target_position.z)**2)
+    
+	#rospy.loginfo("[FEEDBACK] Position: (%f, %f, %f); Distance: %f", actual_position.x, actual_position.y, actual_position.z, distance)
+
+        
+def done_callback(state, result):
+	if state == GoalStatus.SUCCEEDED:
+		rospy.loginfo("[STATE] Goal reached")
+
+def callback_odom(msg):
 	global pose_
 	pose_ = msg.pose.pose
 	global twist_
@@ -47,10 +64,9 @@ def clbk_odom(msg):
 
 def main():
 	rospy.init_node("Assignment_node", anonymous = True)
-	global des_pose, pose_, twist_
+	global des_pose
 	
-	rospy.Subscriber('/odom', Odometry, clbk_odom)
-	#pub = rospy.Publisher('robotposvel', robotposvel, queue_size = 10)
+	rospy.Subscriber('/odom', Odometry, callback_odom)
 	
 	rate = rospy.Rate(10)
 	rate.sleep()
@@ -59,8 +75,6 @@ def main():
 		des_pose.pose.position.y = float(input('Y Goal: '))
 		
 		planning_client(des_pose)
-		
-		
 		
 		rate.sleep()
 
