@@ -14,9 +14,10 @@ pose_ = Pose()
 twist_ = Twist()
 msg =  robotposvel()
 pub = rospy.Publisher('/robotposvel', robotposvel, queue_size = 10)
+pub2 = rospy.Publisher('/user_pose', PoseStamped, queue_size = 10)
 
 def planning_client(des_pose):
-	global msg, pub, pose_, twist_
+	global msg, pub, pub2, pose_, twist_
 	client = actionlib.SimpleActionClient('/reaching_goal', assignment2_part1.msg.PlanningAction)
 	client.wait_for_server()
 	goal = assignment2_part1.msg.PlanningGoal(target_pose = des_pose)
@@ -35,6 +36,7 @@ def planning_client(des_pose):
 			msg.vel_x = twist_.linear.x
 			msg.vel_z = twist_.angular.z
 			pub.publish(msg)
+			pub2.publish(des_pose)
 		
 		#client.wait_for_result()
 		
@@ -80,4 +82,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+	main()
