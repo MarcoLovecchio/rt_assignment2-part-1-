@@ -8,6 +8,8 @@ import actionlib.msg
 import assignment2_part1.msg
 from actionlib_msgs.msg import GoalStatus
 from assignment2_part1.msg import robotposvel
+import sys
+import select
 
 des_pose = PoseStamped()
 pose_ = Pose()
@@ -23,22 +25,26 @@ def planning_client(des_pose):
 	goal = assignment2_part1.msg.PlanningGoal(target_pose = des_pose)
 	client.send_goal(goal, done_cb=done_callback, feedback_cb=feedback_callback)
 	
+	print("'x' to cancel the target ")
 	while not client.get_result():
-		userin = input('x to cancel the goal: ')
-		if userin == 'x':
-			client.cancel_goal()
-			print('Goal cancelled')
-			return 0
-			
-		while not client.get_result():
-			msg.x = pose_.position.x
-			msg.y = pose_.position.y
-			msg.vel_x = twist_.linear.x
-			msg.vel_z = twist_.angular.z
-			pub.publish(msg)
-			pub2.publish(des_pose)
+		msg.x = pose_.position.x
+		msg.y = pose_.position.y
+		msg.vel_x = twist_.linear.x
+		msg.vel_z = twist_.angular.z
 		
-		#client.wait_for_result()
+		i, o, e = select.select([sys.stdin], [], [], 1.0)
+		if(i):
+			cancel = sys.stdin.readline().strip()
+			if cancel == 'x':
+				client.cancel_goal()
+				print("Goal cancelled")
+				break
+			else:
+				print("Input not valid")
+				print("'x' to cancel the target ")
+
+		pub.publish(msg)
+		pub2.publish(des_pose)
 		
 	return client.get_result()
 
@@ -50,9 +56,6 @@ def feedback_callback(feedback):
 		(actual_position.x - target_position.x)**2 +
 		(actual_position.y - target_position.y)**2 +
 		(actual_position.z - target_position.z)**2)
-    
-	#rospy.loginfo("[FEEDBACK] Position: (%f, %f, %f); Distance: %f", actual_position.x, actual_position.y, actual_position.z, distance)
-
         
 def done_callback(state, result):
 	if state == GoalStatus.SUCCEEDED:
@@ -67,17 +70,19 @@ def callback_odom(msg):
 def main():
 	rospy.init_node("Assignment_node", anonymous = True)
 	global des_pose
+	des_pose.pose.position.x = rospy.get_param('des_pos_x')  
+	des_pose.pose.position.y = rospy.get_param('des_pos_y')
 	
 	rospy.Subscriber('/odom', Odometry, callback_odom)
 	
+	planning_client(des_pose)
+	
 	rate = rospy.Rate(10)
-	rate.sleep()
 	while not rospy.is_shutdown():
 		des_pose.pose.position.x = float(input('X Goal: '))
 		des_pose.pose.position.y = float(input('Y Goal: '))
 		
 		planning_client(des_pose)
-		
 		rate.sleep()
 
 
