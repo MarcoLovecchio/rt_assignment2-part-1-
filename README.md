@@ -1,4 +1,4 @@
-# ResearchTrack1_Assignment2-part-1-
+# ResearchTrack1 Assignment2_part-1
 The first node 'assignment.py' implements an action client, allowing the user to set a target goal (x, y), to be reached by the robot using the action server.
 Launching the code, the target is set to the values written in the parameter server, setted by the launch file.
 The target values are published on a new topic /user_pose, to be used by the second node.
@@ -12,7 +12,7 @@ In order to run the code you need to do the following steps:
 
   Clone the repository inside the src folder of a ros workspace:
 
-    git clone https://github.com/MarcoLovecchio/rt_assignment2-part-1-.git
+    git clone https://github.com/MarcoLovecchio/rt_assignment2-part-1-.git assignment2_part1
 
   Build the workspace:
     
