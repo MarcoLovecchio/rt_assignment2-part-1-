@@ -67,6 +67,13 @@ def callback_odom(msg):
 	global twist_
 	twist_ = msg.twist.twist
 
+def is_float(value):
+	try:
+		float(value)
+		return True
+	except ValueError:
+		return False
+
 def main():
 	rospy.init_node("Assignment_node", anonymous = True)
 	global des_pose
@@ -79,9 +86,17 @@ def main():
 	
 	rate = rospy.Rate(10)
 	while not rospy.is_shutdown():
-		des_pose.pose.position.x = float(input('X Goal: '))
-		des_pose.pose.position.y = float(input('Y Goal: '))
+		des_pose.pose.position.x = input('X Goal: ')
+		while not is_float(des_pose.pose.position.x):
+			print("not a number")
+			des_pose.pose.position.x = input('X Goal: ')
+		des_pose.pose.position.y = input('Y Goal: ')
+		while not is_float(des_pose.pose.position.y):
+			print("not a number")
+			des_pose.pose.position.y = input('Y Goal: ')
 		
+		des_pose.pose.position.x = float(des_pose.pose.position.x)
+		des_pose.pose.position.y = float(des_pose.pose.position.y)
 		planning_client(des_pose)
 		rate.sleep()
 
