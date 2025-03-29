@@ -1,4 +1,30 @@
 #! /usr/bin/env python
+##@package assignment2_part1
+# \file assignment.py
+# \brief This node implements an action client, allowing the user to set a target goal (x, y), to be reached by the robot using the action server.
+# \author Marco Lovecchio
+# \version 1.0.0
+# \date 15/03/2025
+#
+# \details
+#
+# **Subscribes to:** <BR>
+# 	 /odom
+#
+# **Publishes to:** <BR>
+# 	 /robotposvel <BR>
+#	 /user_pose
+#
+# **Service:** <BR>
+#	[None]
+#
+# Description:
+# Launching the code, the target is set to the values written in the parameter server, setted by the launch file. The target values are published on a new topic /user_pose, to be used by the second node.
+# During the movement of the robot, the user can type 'x' to cancel the goal and stop the robot, then set new target coordinates. If the robot reach the goal, the user can set other coordinates. Also, a 
+# custom message, with position and velocity of the robot (x, y, vel_l_x, vel_a_z) has been created and updated by relying on the values published on the topic /odom, then published on a new topic 
+# /robotposvel.
+# 
+
 import rospy
 from geometry_msgs.msg import Pose, PoseStamped, Twist, Point, Vector3
 from nav_msgs.msg import Odometry
@@ -11,13 +37,38 @@ from assignment2_part1.msg import robotposvel
 import sys
 import select
 
+## \var des_pose
+# Desired pose target for the robot
 des_pose = PoseStamped()
+
+## \var pose_
+# Current pose of the robot
 pose_ = Pose()
+
+## \var twist_
+# Current velocity of the robot
 twist_ = Twist()
+
+## \var msg
+# Custom message to publish robot position and velocity
 msg =  robotposvel()
+
+## \var pub
+# Publisher for the user target pose
 pub = rospy.Publisher('/robotposvel', robotposvel, queue_size = 10)
+
+## \var pub2
+# Publisher for the user target pose
 pub2 = rospy.Publisher('/user_pose', PoseStamped, queue_size = 10)
 
+##
+# \brief planning_client function handle the action client implementation
+# \param des_pose = desired pose typed by the user
+# \return client.get_result() = result of the action client (success of failure)
+#
+# This function creates an action client that communicates with the action server. It sends the goal to the server, monitors for user cancellation request, and continuously publishes updated robot position
+# and velocity information. While waiting for the goal to be reached, it allows the user to cancel the goal typing 'x' and handles the appropriate callbacks.
+#
 def planning_client(des_pose):
 	global msg, pub, pub2, pose_, twist_
 	client = actionlib.SimpleActionClient('/reaching_goal', assignment2_part1.msg.PlanningAction)
@@ -48,6 +99,14 @@ def planning_client(des_pose):
 		
 	return client.get_result()
 
+
+##
+# \brief feedback_callback for the action client
+# \param feedback = feedback message from the action server
+#
+# This callback processes the feedback messages received from the action server. It calculates the Euclidean distance between the current robot position and the target position.
+# This information can be used to monitor the robot's towards reaching its goal.
+#
 def feedback_callback(feedback):
 	actual_position = feedback.actual_pose.position
 	target_position = des_pose.pose.position
@@ -57,16 +116,38 @@ def feedback_callback(feedback):
 		(actual_position.y - target_position.y)**2 +
 		(actual_position.z - target_position.z)**2)
         
+##
+# \brief done_callback for the action client
+# \param state = final state of the action
+# \param result = result message from the action server
+#
+# This callback is called when the action is completed (either successfully or not). It logs the message "Goal reached" when the SUCCEEDED state as been reached, when the robot successfully reaches the
+# target position.
+#
 def done_callback(state, result):
 	if state == GoalStatus.SUCCEEDED:
 		rospy.loginfo("[STATE] Goal reached")
 
+##
+# \brief callback_odom for odometry data
+# \param msg = Odometry message received from the /odom topic
+#
+# This callback processes the odometry data published by the robot. It updates the global pose_ and  twist_ variables with the current pose and velocity information.
+# This data is then used to update the custom robotposvel message that is published.
+#
 def callback_odom(msg):
 	global pose_
 	pose_ = msg.pose.pose
 	global twist_
 	twist_ = msg.twist.twist
 
+## 
+# \brief is_float function to check if a value can be converted to a float.
+# \param value = input value to check
+#
+# This function attempts to convert the input value to a float. If the conversion is successful, it returns True, otherwise it returns False.
+# This is used to validate user input for target coordinates to ensure they are valid numerical values.
+#
 def is_float(value):
 	try:
 		float(value)
@@ -74,6 +155,12 @@ def is_float(value):
 	except ValueError:
 		return False
 
+##
+# \brief main function that initializes the node and handles the main loop
+#
+# The main initializes the ROS node, sets up the initial target position from parameters, subscribes to the odometry topic, and handles the main loop for user input.
+# It repeatedly propts the user for new target positions after each goal is completer or cancelled. It validates the input to ensure it consists of valid numerical values before setting them as new target.
+#
 def main():
 	rospy.init_node("Assignment_node", anonymous = True)
 	global des_pose
